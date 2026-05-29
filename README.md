@@ -1,6 +1,6 @@
 <div align="center">
 
-# ✨ Aura AI - Intelligent PDF Analyzer
+# ✨ RAG Studio - Intelligent PDF Analyzer
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/FastAPI.svg" height="40" alt="FastAPI" />
