@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAGFlow — Multi-Source Research Assistant</title>
+  <meta name="description" content="Chat with PDFs and search arXiv, Semantic Scholar, PubMed. AI-powered answers grounded in real research." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='32' height='32' rx='8' fill='%230A0E1A'/%3E%3Cpath d='M8 22V10l4 6 4-6v12' stroke='%235EEAD4' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M20 16h6M23 13v6' stroke='%235EEAD4' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <a href="#mainContent" class="skip-link">Skip to content</a>
+
+  <!-- ══════════ BACKGROUND LAYERS ══════════ -->
+  <div class="bg-cosmos" aria-hidden="true">
+    <div class="aurora aurora-1"></div>
+    <div class="aurora aurora-2"></div>
+    <div class="aurora aurora-3"></div>
+    <canvas id="starfield"></canvas>
+    <div class="grid-overlay"></div>
+    <div class="noise-layer"></div>
+  </div>
+
+  <!-- ══════════ NAVBAR ══════════ -->
+  <header class="navbar" id="navbar">
+    <div class="navbar-inner">
+      <a href="#" class="navbar-brand" data-nav="home">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="#5EEAD4"/>
+          <path d="M8 22V10l4 6 4-6v12" stroke="#0A0E1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20 16h6M23 13v6" stroke="#0A0E1A" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+        <span class="brand-text">RAGFlow</span>
+      </a>
+
+      <nav class="navbar-nav" id="navbarNav">
+        <a href="#" class="nav-link active" data-nav="home">Home</a>
+        <a href="#" class="nav-link" data-nav="pdf">Your PDF</a>
+        <a href="#" class="nav-link" data-nav="arxiv">arXiv</a>
+        <a href="#" class="nav-link" data-nav="semantic">Semantic Scholar</a>
+        <a href="#" class="nav-link" data-nav="pubmed">PubMed</a>
+        <a href="#" class="nav-link" data-nav="hybrid">Hybrid</a>
+        <a href="#" class="nav-link" data-nav="knowledge">Knowledge</a>
+      </nav>
+
+      <div class="navbar-actions">
+        <button class="nav-icon-btn" id="settingsBtn" title="Settings" aria-label="Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <div class="status-indicator" id="statusIndicator" title="Ready"><span class="status-dot"></span></div>
+      </div>
+
+      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ══════════ MAIN CONTENT ══════════ -->
+  <main class="main-content" id="mainContent">
+
+    <!-- ── HOME ── -->
+    <section class="page active" id="pageHome">
+
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-glow" aria-hidden="true"></div>
+        <div class="hero-content">
+          <div class="hero-badge reveal-load">
+            <span class="badge-pulse"></span>
+            Multi-Source Research Assistant
+          </div>
+          <h1 class="hero-title">
+            <span class="reveal-load d1">Chat with documents.</span><br/>
+            <span class="hero-accent reveal-load d2">Search the world's papers.</span>
+          </h1>
+          <p class="hero-desc reveal-load d3">Upload PDFs or search across arXiv, Semantic Scholar, and PubMed. Get grounded answers from real research.</p>
+          <div class="hero-actions reveal-load d4">
+            <button class="btn btn-primary btn-lg magnetic" data-nav="pdf">
+              Start with PDF
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+            <button class="btn btn-ghost btn-lg magnetic" data-nav="arxiv">Search arXiv</button>
+          </div>
+          <div class="hero-stats reveal-load d5">
+            <div class="stat"><span class="stat-value">4</span><span class="stat-label">Data Sources</span></div>
+            <div class="stat-divider"></div>
+            <div class="stat"><span class="stat-value">AI</span><span class="stat-label">Powered Answers</span></div>
+            <div class="stat-divider"></div>
+            <div class="stat"><span class="stat-value">PDF</span><span class="stat-label">Document Chat</span></div>
+          </div>
+        </div>
+        <div class="hero-visual reveal-load d3">
+          <div class="orbital-ring r1"></div>
+          <div class="orbital-ring r2"></div>
+          <div class="hero-card glass-card tilt-card">
+            <div class="hero-card-header">
+              <div class="hero-card-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              </div>
+              <div>
+                <div class="hero-card-title">Research Dashboard</div>
+                <div class="hero-card-subtitle">All sources, one place</div>
+              </div>
+            </div>
+            <div class="hero-card-row">
+              <span class="hero-card-dot teal"></span>
+              <span class="hero-card-label">arXiv</span>
+              <span class="hero-card-meta">2.4M papers</span>
+            </div>
+            <div class="hero-card-row">
+              <span class="hero-card-dot emerald"></span>
+              <span class="hero-card-label">Semantic Scholar</span>
+              <span class="hero-card-meta">200M papers</span>
+            </div>
+            <div class="hero-card-row">
+              <span class="hero-card-dot violet"></span>
+              <span class="hero-card-label">PubMed</span>
+              <span class="hero-card-meta">36M articles</span>
+            </div>
+            <div class="hero-card-row">
+              <span class="hero-card-dot amber"></span>
+              <span class="hero-card-label">Your PDFs</span>
+              <span class="hero-card-meta">Unlimited</span>
+            </div>
+          </div>
+          <div class="floating-chip chip-1 glass-card">Grounded answers</div>
+          <div class="floating-chip chip-2 glass-card mono-font">RAG · FAISS · LLM</div>
+        </div>
+      </div>
+
+      <!-- Marquee Strip -->
+      <div class="marquee-strip" aria-hidden="true">
+        <div class="marquee-track">
+          <span>Retrieval Augmented Generation</span><i></i>
+          <span>FAISS Vector Search</span><i></i>
+          <span>Semantic Understanding</span><i></i>
+          <span>Multi-Source Grounding</span><i></i>
+          <span>Citation-Backed Answers</span><i></i>
+          <span>PDF Intelligence</span><i></i>
+          <span>Retrieval Augmented Generation</span><i></i>
+          <span>FAISS Vector Search</span><i></i>
+          <span>Semantic Understanding</span><i></i>
+          <span>Multi-Source Grounding</span><i></i>
+          <span>Citation-Backed Answers</span><i></i>
+          <span>PDF Intelligence</span><i></i>
+        </div>
+      </div>
+
+      <!-- Features Section -->
+      <section class="section">
+        <div class="section-header reveal">
+          <h2 class="section-title">Everything you need for research</h2>
+          <p class="section-desc">Upload documents, search academic databases, and get AI-powered answers. All in one interface.</p>
+        </div>
+        <div class="features-grid">
+          <div class="feature-card glass-card reveal reveal-delay-1" data-nav="pdf">
+            <div class="feature-icon icon-teal">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <h3>PDF Chat</h3>
+            <p>Upload PDFs and chat about their content. Summaries, answers, insights.</p>
+          </div>
+          <div class="feature-card glass-card reveal reveal-delay-2" data-nav="arxiv">
+            <div class="feature-icon icon-violet">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+            <h3>arXiv Search</h3>
+            <p>The latest research in physics, math, CS, and beyond.</p>
+          </div>
+          <div class="feature-card glass-card reveal reveal-delay-3" data-nav="semantic">
+            <div class="feature-icon icon-emerald">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 6 3 12 0v-5"/></svg>
+            </div>
+            <h3>Semantic Scholar</h3>
+            <p>AI-driven discovery across millions of papers.</p>
+          </div>
+          <div class="feature-card glass-card reveal reveal-delay-4" data-nav="pubmed">
+            <div class="feature-icon icon-rose">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </div>
+            <h3>PubMed</h3>
+            <p>Biomedical literature from MEDLINE and PubMed.</p>
+          </div>
+          <div class="feature-card glass-card reveal reveal-delay-5" data-nav="hybrid">
+            <div class="feature-icon icon-sky">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            </div>
+            <h3>Hybrid Search</h3>
+            <p>All sources at once, for comprehensive results.</p>
+          </div>
+          <div class="feature-card glass-card reveal reveal-delay-5" data-nav="knowledge">
+            <div class="feature-icon icon-amber">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+            </div>
+            <h3>Knowledge Base</h3>
+            <p>Your personal research library, queryable end to end.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- How It Works -->
+      <section class="section">
+        <div class="section-header reveal">
+          <h2 class="section-title">Three steps to better research</h2>
+          <p class="section-desc">From upload to insight in seconds.</p>
+        </div>
+        <div class="steps-grid">
+          <div class="step-card reveal reveal-delay-1">
+            <div class="step-number"><span>1</span></div>
+            <h3>Upload or Search</h3>
+            <p>Upload a PDF or query arXiv, Semantic Scholar, and PubMed.</p>
+          </div>
+          <div class="step-card reveal reveal-delay-2">
+            <div class="step-number"><span>2</span></div>
+            <h3>Ask Questions</h3>
+            <p>Type naturally. The AI reads context and nuance.</p>
+          </div>
+          <div class="step-card reveal reveal-delay-3">
+            <div class="step-number"><span>3</span></div>
+            <h3>Get Answers</h3>
+            <p>Grounded, source-backed responses you can verify.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Data Sources -->
+      <section class="section section-last">
+        <div class="section-header reveal">
+          <h2 class="section-title">Search where the research lives</h2>
+          <p class="section-desc">The world's largest academic databases, one interface.</p>
+        </div>
+        <div class="sources-grid">
+          <div class="source-card glass-card reveal reveal-delay-1" data-nav="pdf">
+            <div class="source-icon pdf">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <h3>Your PDFs</h3>
+            <p>Chat with your own documents.</p>
+          </div>
+          <div class="source-card glass-card reveal reveal-delay-2" data-nav="arxiv">
+            <div class="source-icon arxiv">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+            <h3>arXiv</h3>
+            <p>Physics, math, CS and more.</p>
+          </div>
+          <div class="source-card glass-card reveal reveal-delay-3" data-nav="semantic">
+            <div class="source-icon semantic">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 6 3 12 0v-5"/></svg>
+            </div>
+            <h3>Semantic Scholar</h3>
+            <p>AI-powered paper discovery.</p>
+          </div>
+          <div class="source-card glass-card reveal reveal-delay-4" data-nav="pubmed">
+            <div class="source-icon pubmed">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </div>
+            <h3>PubMed</h3>
+            <p>Biomedical literature.</p>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ── YOUR PDF ── -->
+    <section class="page" id="pagePdf">
+      <div class="source-page">
+        <div class="source-page-header">
+          <div class="source-page-icon pdf"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <div><h1>Your PDF</h1><p class="source-page-desc">Upload a PDF and chat about its content</p></div>
+        </div>
+        <div class="source-chat-layout">
+          <div class="source-chat-main">
+            <div class="source-upload-zone" id="pdfUploadZone">
+              <input type="file" id="pdfFile" accept="application/pdf" hidden />
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span id="pdfUploadLabel">Drop PDF here or click to upload</span>
+              <span class="upload-meta" id="pdfUploadMeta"></span>
+            </div>
+            <div class="messages" id="messagesPdf" role="log" aria-live="polite">
+              <div class="empty-state" id="emptyPdf">
+                <div class="empty-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.8" stroke-linecap="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                <h3>Ask your PDF anything</h3>
+                <p>Upload a document to get started.</p>
+                <div class="empty-shortcuts">
+                  <button class="shortcut-chip" data-query="Summarize this document">Summarize</button>
+                  <button class="shortcut-chip" data-query="What are the key findings?">Key findings</button>
+                  <button class="shortcut-chip" data-query="Compare methodologies">Methodologies</button>
+                </div>
+              </div>
+            </div>
+            <button class="scroll-fab" id="scrollPdf" aria-label="Scroll to bottom"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+            <div class="composer">
+              <form id="formPdf" class="composer-form">
+                <div class="composer-inner glass-input">
+                  <textarea id="inputPdf" rows="1" placeholder="Ask a question about your PDF..." required></textarea>
+                  <button type="submit" class="send-btn" aria-label="Send"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+                </div>
+                <div class="composer-bar"><span class="composer-hint">Enter to send &middot; Shift+Enter new line</span><span class="composer-source">Source: Your PDF</span></div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── ARXIV ── -->
+    <section class="page" id="pageArxiv">
+      <div class="source-page">
+        <div class="source-page-header">
+          <div class="source-page-icon arxiv"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+          <div><h1>arXiv</h1><p class="source-page-desc">Physics, math, computer science, and more</p></div>
+        </div>
+        <div class="source-search-bar">
+          <form id="formSearchArxiv" class="search-bar glass-input">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="inputSearchArxiv" placeholder="Search arXiv papers..." required />
+            <button type="submit" class="btn btn-primary">Search</button>
+          </form>
+          <div class="search-suggestions"><button class="shortcut-chip" data-query="transformer attention mechanism">Transformers</button><button class="shortcut-chip" data-query="large language models">LLMs</button><button class="shortcut-chip" data-query="retrieval augmented generation">RAG</button></div>
+        </div>
+        <div class="source-results" id="resultsArxiv"><div class="search-empty" id="emptyArxiv"><h3>Search arXiv</h3><p>Enter a query to find research papers.</p></div></div>
+      </div>
+    </section>
+
+    <!-- ── SEMANTIC SCHOLAR ── -->
+    <section class="page" id="pageSemantic">
+      <div class="source-page">
+        <div class="source-page-header">
+          <div class="source-page-icon semantic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 6 3 12 0v-5"/></svg></div>
+          <div><h1>Semantic Scholar</h1><p class="source-page-desc">AI-powered academic search across millions of papers</p></div>
+        </div>
+        <div class="source-search-bar">
+          <form id="formSearchSemantic" class="search-bar glass-input">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="inputSearchSemantic" placeholder="Search Semantic Scholar..." required />
+            <button type="submit" class="btn btn-primary">Search</button>
+          </form>
+          <div class="search-suggestions"><button class="shortcut-chip" data-query="deep learning">Deep Learning</button><button class="shortcut-chip" data-query="natural language processing">NLP</button><button class="shortcut-chip" data-query="computer vision">Computer Vision</button></div>
+        </div>
+        <div class="source-results" id="resultsSemantic"><div class="search-empty" id="emptySemantic"><h3>Search Semantic Scholar</h3><p>Enter a query to find research papers.</p></div></div>
+      </div>
+    </section>
+
+    <!-- ── PUBMED ── -->
+    <section class="page" id="pagePubmed">
+      <div class="source-page">
+        <div class="source-page-header">
+          <div class="source-page-icon pubmed"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+          <div><h1>PubMed</h1><p class="source-page-desc">Biomedical and life sciences literature</p></div>
+        </div>
+        <div class="source-search-bar">
+          <form id="formSearchPubmed" class="search-bar glass-input">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="inputSearchPubmed" placeholder="Search PubMed..." required />
+            <button type="submit" class="btn btn-primary">Search</button>
+          </form>
+          <div class="search-suggestions"><button class="shortcut-chip" data-query="CRISPR gene editing">CRISPR</button><button class="shortcut-chip" data-query="mRNA vaccine">mRNA Vaccine</button><button class="shortcut-chip" data-query="cancer immunotherapy">Immunotherapy</button></div>
+        </div>
+        <div class="source-results" id="resultsPubmed"><div class="search-empty" id="emptyPubmed"><h3>Search PubMed</h3><p>Enter a query to find biomedical papers.</p></div></div>
+      </div>
+    </section>
+
+    <!-- ── HYBRID ── -->
+    <section class="page" id="pageHybrid">
+      <div class="source-page">
+        <div class="source-page-header">
+          <div class="source-page-icon hybrid"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+          <div><h1>Hybrid Search</h1><p class="source-page-desc">All sources, searched simultaneously</p></div>
+        </div>
+        <div class="source-search-bar">
+          <form id="formSearchHybrid" class="search-bar glass-input">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="inputSearchHybrid" placeholder="Search all sources..." required />
+            <button type="submit" class="btn btn-primary">Search</button>
+          </form>
+          <div class="search-suggestions"><button class="shortcut-chip" data-query="transformer architecture">Transformers</button><button class="shortcut-chip" data-query="protein folding">Protein Folding</button><button class="shortcut-chip" data-query="quantum computing">Quantum Computing</button></div>
+        </div>
+        <div class="source-results" id="resultsHybrid"><div class="search-empty" id="emptyHybrid"><h3>Search all sources</h3><p>Enter a query to search across arXiv, Semantic Scholar, and PubMed.</p></div></div>
+      </div>
+    </section>
+
+    <!-- ── KNOWLEDGE ── -->
+    <section class="page" id="pageKnowledge">
+      <div class="knowledge-layout">
+        <div class="knowledge-header">
+          <div><h1>Knowledge Base</h1><p class="knowledge-desc">Your uploaded documents</p></div>
+          <button class="btn btn-primary" id="uploadBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Upload PDF</button>
+        </div>
+        <input type="file" id="kbFileInput" accept="application/pdf" hidden />
+        <div class="kb-grid" id="kbGrid"><div class="kb-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.8" stroke-linecap="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>No documents uploaded yet.</p><p>Click "Upload PDF" to get started.</p></div></div>
+      </div>
+    </section>
+
+    <!-- ── SETTINGS ── -->
+    <section class="page" id="pageSettings">
+      <div class="settings-layout">
+        <div class="settings-header"><h1>Settings</h1><p class="settings-desc">Configure your AI providers and preferences</p></div>
+        <div class="settings-grid">
+          <div class="settings-card glass-card">
+            <div class="settings-card-header"><div class="provider-icon gemini"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div><h3>Google Gemini</h3><p class="provider-status" id="geminiStatus">Not configured</p></div></div>
+            <div class="settings-card-body">
+              <div class="form-group"><label for="geminiKey">API Key</label><div class="input-group"><input type="password" id="geminiKey" placeholder="AIza..." class="form-input" /><button type="button" class="btn-icon toggle-password" data-target="geminiKey" aria-label="Toggle visibility"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+              <div class="form-group"><label for="geminiModel">Model</label><select id="geminiModel" class="form-select"><option value="gemini-2.5-flash">Gemini 2.5 Flash</option><option value="gemini-2.5-pro">Gemini 2.5 Pro</option><option value="gemini-2.0-flash">Gemini 2.0 Flash</option><option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option></select></div>
+              <button class="btn btn-primary" id="saveGemini">Save Gemini Settings</button>
+            </div>
+          </div>
+          <div class="settings-card glass-card">
+            <div class="settings-card-header"><div class="provider-icon openai"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></div><div><h3>OpenAI</h3><p class="provider-status" id="openaiStatus">Not configured</p></div></div>
+            <div class="settings-card-body">
+              <div class="form-group"><label for="openaiKey">API Key</label><div class="input-group"><input type="password" id="openaiKey" placeholder="sk-..." class="form-input" /><button type="button" class="btn-icon toggle-password" data-target="openaiKey" aria-label="Toggle visibility"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+              <div class="form-group"><label for="openaiModel">Model</label><select id="openaiModel" class="form-select"><option value="gpt-4o">GPT-4o</option><option value="gpt-4o-mini">GPT-4o Mini</option><option value="gpt-4-turbo">GPT-4 Turbo</option><option value="gpt-3.5-turbo">GPT-3.5 Turbo</option></select></div>
+              <button class="btn btn-primary" id="saveOpenai">Save OpenAI Settings</button>
+            </div>
+          </div>
+          <div class="settings-card settings-card-full glass-card">
+            <div class="settings-card-header"><div class="provider-icon general"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><div><h3>General Settings</h3><p class="provider-status">Application preferences</p></div></div>
+            <div class="settings-card-body">
+              <div class="form-row">
+                <div class="form-group"><label for="defaultProvider">Default Provider</label><select id="defaultProvider" class="form-select"><option value="gemini">Google Gemini</option><option value="openai">OpenAI</option></select></div>
+                <div class="form-group"><label for="defaultSource">Default Source</label><select id="defaultSource" class="form-select"><option value="user">Your PDF</option><option value="arxiv">arXiv</option><option value="semantic_scholar">Semantic Scholar</option><option value="pubmed">PubMed</option><option value="hybrid">Hybrid</option></select></div>
+              </div>
+              <div class="form-group"><label>Active Provider</label><div class="provider-toggle"><button class="provider-btn active" data-provider="gemini" id="useGemini"><span class="provider-dot gemini"></span>Use Gemini</button><button class="provider-btn" data-provider="openai" id="useOpenai"><span class="provider-dot openai"></span>Use OpenAI</button></div></div>
+              <button class="btn btn-primary" id="saveGeneral">Save General Settings</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ══════════ FOOTER ══════════ -->
+  <footer class="footer">
+    <div class="footer-inner">
+
+      <div class="footer-top">
+        <div class="footer-brand-col">
+          <a href="#" class="footer-brand" data-nav="home">
+            <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#5EEAD4"/><path d="M8 22V10l4 6 4-6v12" stroke="#0A0E1A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 16h6M23 13v6" stroke="#0A0E1A" stroke-width="2.2" stroke-linecap="round"/></svg>
+            <span>RAGFlow</span>
+          </a>
+          <p class="footer-tagline">AI-powered answers grounded in real research. Chat with your PDFs or search across the world's academic databases.</p>
+          <div class="footer-status" id="footerStatus">
+            <span class="status-dot"></span>
+            <span id="footerStatusText">All systems ready</span>
+          </div>
+        </div>
+
+        <nav class="footer-col" aria-label="Research sources">
+          <h4>Research Sources</h4>
+          <ul>
+            <li><a href="#" data-nav="pdf">Your PDF</a></li>
+            <li><a href="#" data-nav="arxiv">arXiv</a></li>
+            <li><a href="#" data-nav="semantic">Semantic Scholar</a></li>
+            <li><a href="#" data-nav="pubmed">PubMed</a></li>
+          </ul>
+        </nav>
+
+        <nav class="footer-col" aria-label="Product">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="#" data-nav="hybrid">Hybrid Search</a></li>
+            <li><a href="#" data-nav="knowledge">Knowledge Base</a></li>
+            <li><a href="#" data-nav="settings">Settings</a></li>
+          </ul>
+        </nav>
+
+        <nav class="footer-col" aria-label="Data providers">
+          <h4>Data Providers</h4>
+          <ul>
+            <li><a href="https://arxiv.org" target="_blank" rel="noopener">arxiv.org<svg class="ext-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></a></li>
+            <li><a href="https://www.semanticscholar.org" target="_blank" rel="noopener">semanticscholar.org<svg class="ext-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></a></li>
+            <li><a href="https://pubmed.ncbi.nlm.nih.gov" target="_blank" rel="noopener">pubmed.ncbi.nlm.nih.gov<svg class="ext-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></a></li>
+          </ul>
+        </nav>
+      </div>
+
+      <div class="footer-bottom">
+        <div class="footer-copy">&copy; 2026 RAGFlow &middot; Research made accessible</div>
+        <div class="footer-stack mono-font">FastAPI &middot; LangChain &middot; FAISS</div>
+      </div>
+
+    </div>
+  </footer>
+
+  <div class="toast-container" id="toastContainer"></div>
+  <script src="/static/script.js"></script>
+</body>
+</html>
