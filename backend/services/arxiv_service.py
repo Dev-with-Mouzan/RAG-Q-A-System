@@ -24,24 +24,26 @@ def parse_arxiv_response(xml_text):
     ns = {"atom": "http://www.w3.org/2005/Atom"}
     root = ET.fromstring(xml_text)
 
+    def text(path, element=None):
+        el = (element or root).find(path, ns)
+        return el.text.strip() if el is not None and el.text else ""
+
     entries = root.findall("atom:entry", ns)
     documents = []
 
     for entry in entries:
-        title = entry.findtext("atom:title", "").strip()
-        title = title.replace("\n", " ").strip()
+        title = text("atom:title", entry).replace("\n", " ").strip()
+        summary = text("atom:summary", entry).replace("\n", " ").strip()
+        published = text("atom:published", entry)
 
-        summary = entry.findtext("atom:summary", "").strip()
-        summary = summary.replace("\n", " ").strip()
+        authors = []
+        for author in entry.findall("atom:author", ns):
+            name = text("atom:name", author)
+            if name:
+                authors.append(name)
 
-        authors = [
-            author.findtext("atom:name", "") or author.text
-            for author in entry.findall("atom:author", ns)
-        ]
-
-        id_element = entry.findtext("atom:id", "")
-        arxiv_id = id_element.split("/")[-1] if id_element else ""
-
+        id_url = text("atom:id", entry)
+        arxiv_id = id_url.split("/abs/")[-1].split("v")[0] if id_url else ""
         pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
         html_url = f"https://arxiv.org/abs/{arxiv_id}"
 
@@ -54,6 +56,7 @@ def parse_arxiv_response(xml_text):
                 "arxiv_id": arxiv_id,
                 "pdf_url": pdf_url,
                 "html_url": html_url,
+                "published": published,
                 "source": "arxiv",
             },
         )

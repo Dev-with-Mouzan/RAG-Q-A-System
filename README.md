@@ -1,106 +1,208 @@
 <div align="center">
 
-# ✨ RAG Studio - Intelligent PDF Analyzer
+<img src="frontend/public/logo.png" alt="LiteraAI logo" width="140" />
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/FastAPI.svg" height="40" alt="FastAPI" />
-  <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/Python-Dark.svg" height="40" alt="Python" />
-  <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/HTML.svg" height="40" alt="HTML5" />
-  <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/CSS.svg" height="40" alt="CSS3" />
-  <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/JavaScript.svg" height="40" alt="JavaScript" />
-  <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/SQLite.svg" height="40" alt="SQLite" />
-</p>
+# LiteraAI
 
-[![Python Version](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.136-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![LangChain](https://img.shields.io/badge/LangChain-1.4-1C3C3C?style=for-the-badge&logo=langchain)](https://langchain.com/)
+**Research assistant that lets you talk to PDFs and 240M+ academic papers — grounded answers powered by RAG, FAISS and OpenAI.**
 
-**Talk to your Documents.** Upload any PDF and get intelligent, context-aware answers instantly powered by AI.
+<img src="https://skillicons.dev/icons?i=python,fastapi,react,vite,js,sqlite,docker,git" alt="Tech stack icons" height="45" />
+
+<br>
+
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![LangChain](https://img.shields.io/badge/%F0%9F%A6%9C%EF%B8%8F%E2%80%8D%E2%9B%93%EF%B8%8F-LangChain-1C3C3C?style=for-the-badge)
+![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=for-the-badge&logo=openai&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 
 </div>
 
 ---
 
-## 🚀 Features
+## 1. Problem
 
-- 📄 **PDF Processing:** Seamlessly upload and parse PDF documents.
-- 🧠 **Retrieval-Augmented Generation (RAG):** Context-aware answers utilizing LangChain, FAISS, and Google GenAI/Ollama.
-- 💬 **Conversation Management:** Built-in chat history tracking with SQLite. Conversations and messages are saved and easily retrievable.
-- 🎨 **Aurora Glassmorphism UI:** A breathtaking, ultra-modern frontend featuring fluid mesh gradients and frosted glass aesthetics.
-- ⚡ **High Performance:** Asynchronous endpoints built on FastAPI for lightning-fast responses.
+Researchers, students, and engineers drown in PDFs and papers. Reading a 30-page document to find one answer is slow, and generic chatbots hallucinate because they have no access to the actual document. Existing academic search engines return lists of links — not understanding — and none of them let you *ask questions* about what they find.
 
-## 🛠️ Technology Stack
+## 2. Solution
 
-- **Backend:** Python 3, FastAPI, Uvicorn
-- **AI / NLP:** LangChain, FAISS (Vector Store), PyPDF, Google Generative AI / Ollama
-- **Database:** SQLite (via DB Service)
-- **Frontend:** Vanilla HTML5, CSS3 (Glassmorphism), JavaScript
+LiteraAI is a full-stack web app where every answer is grounded in real source material:
 
-## 📂 Project Structure
+- **Chat with any PDF** — upload a document and ask questions; answers are generated from the paper's actual content via retrieval-augmented generation (RAG) with FAISS vector search.
+- **Search four research sources at once** — arXiv, Semantic Scholar (Crossref), PubMed, or Hybrid mode querying all of them in parallel.
+- **Talk about any search result** — each paper card has an inline "Talk about it" chat that answers questions using the paper's metadata and abstract.
+- **Persistent history** — conversations are stored in SQLite and can be resumed.
+- **Bring your own key** — the OpenAI API key lives in the user's browser localStorage and is sent per-request; nothing is stored server-side.
 
-```text
-app/
-├── core/
-│   ├── llm_service.py      # LLM initialization and response generation
-│   ├── load_service.py     # PDF loading and text splitting
-│   ├── rag_service.py      # Prompt building and RAG logic
-│   └── vector_service.py   # FAISS VectorStore creation and loading
-├── services/
-│   └── db_service.py       # SQLite Conversation and Message management
-├── static/
-│   ├── index.html          # Main User Interface
-│   ├── styles.css          # Aurora Glassmorphism Styling
-│   └── script.js           # Client-side logic and API integration
-├── uploads/                # Directory for uploaded PDFs and FAISS indices
-├── main.py                 # FastAPI application entry point & routing
-└── requirements.txt        # Python dependencies
+## 3. Architecture
+
+- **Backend (`backend/main.py`)** — FastAPI app exposing `/query`, `/search`, `/paper-chat` and conversation CRUD. Also serves the built frontend from `frontend/dist`, so a single process deploys the whole app.
+- **Services (`backend/services/`)** — `vector_service.py` (OpenAI embeddings + FAISS index create/load), `llm_service.py` (ChatOpenAI response generation), `load_service.py` (PyPDF loading + text splitting), `rag_service.py` (prompt building), `db_service.py` (SQLite persistence), plus one service each for arXiv / Crossref / PubMed APIs.
+- **Frontend (`frontend/`)** — React 18 + Vite single-page app with Framer Motion animations, hash-based routing, and a settings store synced to localStorage.
+- **Storage** — uploaded PDFs land in `backend/uploads/`; each gets a namespaced FAISS index (`<pdf>_vs_openai_<model>`); chat history goes to `backend/db/rag_app.db`.
+
+## 4. Workflow diagram
+
+```mermaid
+flowchart LR
+    U[User] -->|question + API key| FE[React SPA]
+    FE -->|POST /query| BE[FastAPI]
+    BE -->|load & split| PDF[PyPDF]
+    PDF -->|embed| EMB[OpenAIEmbeddings]
+    EMB -->|upsert / similarity search| FAISS[(FAISS index)]
+    FAISS -->|top-k chunks| P[Prompt builder]
+    P -->|grounded prompt| LLM[ChatOpenAI]
+    LLM -->|answer| BE
+    FE -->|GET /search| ARX[arXiv] & CRS[Crossref] & PUB[PubMed]
+    FE -->|POST /paper-chat| BE
+    BE <--> DB[(SQLite)]
 ```
 
-## ⚙️ Installation & Setup
+## 5. Tech stack
 
-1. **Clone the repository and navigate to the project directory:**
+<div align="center">
+<img src="https://skillicons.dev/icons?i=python,fastapi,react,vite,js,sqlite,docker&perline=7" alt="stack strip" height="50" />
+</div>
+
+| Layer | Technology | Why |
+|---|---|---|
+| <img src="https://skillicons.dev/icons?i=python" width="20"> **Backend** | Python 3.11+, FastAPI, Uvicorn | Async endpoints, automatic OpenAPI docs |
+| <img src="https://skillicons.dev/icons?i=ai" width="20"> **AI** | LangChain, OpenAI (`gpt-4o` default, `text-embedding-3-small`) | One provider for chat + embeddings keeps behavior predictable |
+| ![FAISS](https://img.shields.io/badge/Vector_store-FAISS-1C3C3C?style=flat-square) **Vector store** | FAISS (`faiss-cpu`) | Fast local similarity search, zero infra |
+| ![arXiv](https://img.shields.io/badge/Search-arXiv%20·%20Crossref%20·%20PubMed-B31B1B?style=flat-square) **Search APIs** | arXiv Atom API, Crossref, NCBI E-utilities | Free, keyless scholarly metadata |
+| <img src="https://skillicons.dev/icons?i=sqlite" width="20"> **Database** | SQLite via `db_service.py` | Zero-config persistence of conversations |
+| <img src="https://skillicons.dev/icons?i=react" width="20"> **Frontend** | React 18, Vite 6, Framer Motion | Fast builds, animated UI without a component library |
+| <img src="https://skillicons.dev/icons?i=css" width="20"> **Styling** | Hand-written CSS design system | Custom brand palette, no framework bloat |
+
+## 6. Key engineering decisions
+
+- **Single-provider (OpenAI-only) LLM/embedding layer** — earlier multi-provider support (Gemini/Ollama) caused routing failures and mismatched embedding dimensions; hardcoding OpenAI made model config explicit and reproducible.
+- **Per-request credentials instead of server-side keys** — the browser stores the user's API key and sends it with each request, so one deployment serves many users without shared secrets.
+- **Namespaced FAISS indices per embedding config** (`embedding_tag()`) — switching embedding models doesn't corrupt existing indexes; old ones simply become orphaned.
+- **Serving the built SPA from FastAPI** — one process, one port, one deploy target; no CORS setup needed.
+- **Parallel source fan-out with per-source error isolation** — a Crossref outage degrades results instead of failing the whole hybrid search.
+
+## 7. Screenshots
+
+> Drop real captures at these paths.
+
+![Home hero](docs/screenshots/home.png) — Landing page with animated hero and pipeline overview
+![PDF chat](docs/screenshots/pdf-chat.png) — Chatting with an uploaded PDF
+![Paper search](docs/screenshots/search.png) — Multi-source paper search with example chips
+![Paper talk](docs/screenshots/paper-talk.png) — Inline "Talk about it" chat on a search result
+
+## 8. Demo
+
+No hosted demo yet. Fastest local run (two terminals):
+
+```bash
+# Terminal 1 — backend on :8000
+pip install -r backend/requirements.txt
+python -m uvicorn backend.main:app --reload
+
+# Terminal 2 — frontend dev server on :5173 (proxies API calls)
+cd frontend && npm install && npm run dev
+```
+
+Then set your OpenAI API key in the app's Settings page.
+
+Or run everything with Docker (single container serves API + UI):
+
+```bash
+docker build -t literaai .
+docker run -p 8000:8000 -e OPENAI_API_KEY=sk-... literaai
+```
+
+## 9. Installation
+
+1. **Prerequisites:** Python 3.11+, Node.js 18+.
+2. **Clone:** `git clone <repo-url> && cd RAG-Q-A-System`
+3. **Backend deps:**
    ```bash
-   cd app
+   pip install -r backend/requirements.txt
    ```
-
-2. **Create and activate a virtual environment:**
-   ```bash
-   uv venv
-   source .venv/bin/activate
-   ```
-
-3. **Install dependencies:**
-   ```bash
-   uv pip install -r requirements.txt
-   ```
-
-4. **Environment Variables:**
-   Create a `.env` file in the root directory and add your necessary API keys (e.g., Google Gemini API key if using GenAI).
+4. **Environment (optional):** create `backend/.env` to set fallbacks:
    ```env
-   GOOGLE_API_KEY=your_api_key_here
+   OPENAI_API_KEY=sk-...
+   OPENAI_MODEL=gpt-4o
+   OPENAI_EMBEDDING_MODEL=text-embedding-3-small
    ```
-
-5. **Run the FastAPI server:**
+   The app works without `.env` if you paste your key into Settings in the UI.
+5. **Run backend:** `python -m uvicorn backend.main:app --reload` → http://localhost:8000
+6. **Production frontend build:**
    ```bash
-   uvicorn main:app --reload
+   cd frontend && npm install && npm run build
    ```
+   The FastAPI server automatically serves `frontend/dist`.
 
-6. **Access the Application:**
-   Open your browser and navigate to `http://localhost:8000` to interact with Aura AI!
+## 10. API documentation
 
-## 📡 API Endpoints
+Interactive Swagger UI is available at `/docs`. Main endpoints:
 
-- `GET /` - Serves the frontend UI.
-- `POST /query` - Upload a PDF or query an existing one to get AI-generated insights.
-- `GET /api/conversations` - List all chat sessions.
-- `POST /api/conversations` - Create a new chat session.
-- `GET /api/conversations/{id}` - Get a specific conversation.
-- `DELETE /api/conversations/{id}` - Remove a conversation.
-- `GET /api/conversations/{id}/messages` - Retrieve chat history for a session.
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/query` | Upload a PDF or query an indexed one (multipart form: `query`, `file`/`pdf_name`, optional `model`, `api_key`) → `{response}` |
+| GET | `/search?q=&source=` | Search `arxiv` \| `semantic` \| `pubmed` \| `hybrid` → `{results: [{title, authors, abstract, url, year, source}]}` |
+| POST | `/paper-chat` | JSON `{paper, query, messages[]}` → grounded Q&A about one paper |
+| GET | `/api/conversations` | List saved conversations |
+| DELETE | `/api/conversations/{id}` | Delete a conversation |
+| GET | `/{path}` | Serves the built SPA (catch-all) |
+
+## 11. Evaluation/results
+
+No formal benchmark suite yet. Manual verification performed during development:
+
+| Check | Result |
+|---|---|
+| arXiv parse (real titles/authors/dates returned) | Pass — 5/5 fields populated |
+| Semantic Scholar (Crossref) search | Pass after fixing invalid `select` field |
+| PubMed esearch + esummary + efetch pipeline | Pass — abstracts retrieved |
+| Hybrid fan-out | Pass — 15 results (5 × 3 sources) |
+| Invalid API key handling | Pass — clean 401 surfaced as toast, no crash |
+
+Intended methodology: golden-question set per source with expected-paper assertions, plus RAG faithfulness scoring against source abstracts.
+
+## 12. Deployment
+
+The repo ships as a **single deployable unit**: build the frontend once, then run uvicorn — it serves both API and SPA.
+
+```bash
+cd frontend && npm install && npm run build
+pip install -r backend/requirements.txt
+python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+```
+
+A multi-stage `Dockerfile` is included (Node build stage → Python runtime stage). For AWS:
+
+```bash
+# Build & push to Amazon ECR, then run on App Runner / ECS / EC2
+aws ecr create-repository --repository-name literaai
+docker build -t literaai .
+docker tag literaai:latest <ecr-url>:latest
+docker push <ecr-url>:latest
+```
+
+Recommended targets: AWS App Runner / ECS Fargate, Render, Railway, Fly.io — anything with a **persistent disk or attached volume** for `/app/backend/uploads` and `/app/backend/db` (see Limitations). Set `OPENAI_API_KEY` as an environment secret.
+
+## 13. Limitations
+
+- **Needs a persistent filesystem** — FAISS indexes and SQLite live on local disk, so serverless platforms (Vercel/Netlify functions) and ephemeral containers lose data on redeploy.
+- **Abstract-only grounding for searched papers** — "Talk about it" uses title/authors/abstract, not full text (paywalled PDFs aren't fetched).
+- **Single-user concurrency** — SQLite and per-request FAISS loading are fine for personal/small-team use, not high traffic.
+- **No authentication** — anyone with the URL can use the deployment (and burn its server-side key, if set).
+- **Embedding model changes orphan old indexes** — previous PDFs re-index on first query under a new tag.
+
+## 14. Future improvements
+
+- Docker Compose with volume mounts for portable persistent deployments
+- Full-text PDF download + indexing for open-access search results
+- Streaming responses (SSE) for chat
+- User accounts with server-side key vaulting
+- Citation-aware answers linking claims back to specific PDF pages
 
 ---
 
 <div align="center">
-  <i>Built with ❤️ using FastAPI and LangChain</i>
+<img src="frontend/public/logo.png" alt="LiteraAI" width="28" /><br>
+<i>LiteraAI — every answer grounded in a real source.</i>
 </div>
-# RAG-Q-A-System

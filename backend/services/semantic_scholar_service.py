@@ -8,7 +8,7 @@ def search_semantic_scholar(query, max_results=5):
     params = {
         "query": query,
         "rows": max_results,
-        "select": "title,author,container-title,abstract,published-print,pub-id",
+        "select": "title,author,container-title,abstract,published-print,DOI",
     }
     response = requests.get(url, params=params)
     response.raise_for_status()
@@ -37,6 +37,7 @@ def search_semantic_scholar(query, max_results=5):
                 "journal": journal,
                 "doi": arxiv_id,
                 "pdf_url": pdf_url,
+                "published": published,
                 "source": "semantic_scholar",
             },
         )

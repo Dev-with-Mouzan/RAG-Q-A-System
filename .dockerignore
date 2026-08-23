@@ -1,0 +1,20 @@
+# never bake secrets or runtime data into the image
+backend/.env
+.env
+
+# runtime data — volumes handle this in production
+backend/uploads/
+backend/db/
+
+# build artifacts & deps (rebuilt inside the image)
+frontend/node_modules/
+frontend/dist/
+**/__pycache__/
+**/*.py[cod]
+
+# git & tooling
+.git/
+.gitignore
+*.md
+.vscode/
+.idea/

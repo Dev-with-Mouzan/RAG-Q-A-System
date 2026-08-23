@@ -55,7 +55,8 @@ def search_pubmed(query, max_results=5):
         abstract_match = root.findtext(f".//PMID[@Value='{pid}']/Abstract/AbstractText", "")
         
         doi_elem = article.get("elocation-id", "")
-        
+        pubdate = article.get("pubdate", "")
+
         pdf_url = f"https://doi.org/{doi_elem}" if doi_elem else ""
 
         doc = Document(
@@ -66,6 +67,7 @@ def search_pubmed(query, max_results=5):
                 "authors": author_names,
                 "doi": doi_elem,
                 "pdf_url": pdf_url,
+                "published": pubdate,
                 "source": "pubmed",
             },
         )
