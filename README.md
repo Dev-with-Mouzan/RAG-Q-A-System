@@ -82,41 +82,13 @@ flowchart LR
 - **Serving the built SPA from FastAPI** — one process, one port, one deploy target; no CORS setup needed.
 - **Parallel source fan-out with per-source error isolation** — a Crossref outage degrades results instead of failing the whole hybrid search.
 
-## 7. Screenshots
 
-> Drop real captures at these paths.
 
-![Home hero](docs/screenshots/home.png) — Landing page with animated hero and pipeline overview
-![PDF chat](docs/screenshots/pdf-chat.png) — Chatting with an uploaded PDF
-![Paper search](docs/screenshots/search.png) — Multi-source paper search with example chips
-![Paper talk](docs/screenshots/paper-talk.png) — Inline "Talk about it" chat on a search result
 
-## 8. Demo
-
-No hosted demo yet. Fastest local run (two terminals):
-
-```bash
-# Terminal 1 — backend on :8000
-pip install -r backend/requirements.txt
-python -m uvicorn backend.main:app --reload
-
-# Terminal 2 — frontend dev server on :5173 (proxies API calls)
-cd frontend && npm install && npm run dev
-```
-
-Then set your OpenAI API key in the app's Settings page.
-
-Or run everything with Docker (single container serves API + UI):
-
-```bash
-docker build -t literaai .
-docker run -p 8000:8000 -e OPENAI_API_KEY=sk-... literaai
-```
-
-## 9. Installation
+## 7. Installation
 
 1. **Prerequisites:** Python 3.11+, Node.js 18+.
-2. **Clone:** `git clone <repo-url> && cd RAG-Q-A-System`
+2. **Clone:** `git clone https://github.com/Dev-with-Mouzan/Litera_Ai.git && cd Litera_Ai`
 3. **Backend deps:**
    ```bash
    pip install -r backend/requirements.txt
@@ -135,7 +107,7 @@ docker run -p 8000:8000 -e OPENAI_API_KEY=sk-... literaai
    ```
    The FastAPI server automatically serves `frontend/dist`.
 
-## 10. API documentation
+## 8. API documentation
 
 Interactive Swagger UI is available at `/docs`. Main endpoints:
 
@@ -148,7 +120,7 @@ Interactive Swagger UI is available at `/docs`. Main endpoints:
 | DELETE | `/api/conversations/{id}` | Delete a conversation |
 | GET | `/{path}` | Serves the built SPA (catch-all) |
 
-## 11. Evaluation/results
+## 9. Evaluation/results
 
 No formal benchmark suite yet. Manual verification performed during development:
 
@@ -162,43 +134,13 @@ No formal benchmark suite yet. Manual verification performed during development:
 
 Intended methodology: golden-question set per source with expected-paper assertions, plus RAG faithfulness scoring against source abstracts.
 
-## 12. Deployment
-
-The repo ships as a **single deployable unit**: build the frontend once, then run uvicorn — it serves both API and SPA.
-
-```bash
-cd frontend && npm install && npm run build
-pip install -r backend/requirements.txt
-python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT
-```
-
-A multi-stage `Dockerfile` is included (Node build stage → Python runtime stage). For AWS:
-
-```bash
-# Build & push to Amazon ECR, then run on App Runner / ECS / EC2
-aws ecr create-repository --repository-name literaai
-docker build -t literaai .
-docker tag literaai:latest <ecr-url>:latest
-docker push <ecr-url>:latest
-```
-
-Recommended targets: AWS App Runner / ECS Fargate, Render, Railway, Fly.io — anything with a **persistent disk or attached volume** for `/app/backend/uploads` and `/app/backend/db` (see Limitations). Set `OPENAI_API_KEY` as an environment secret.
-
-## 13. Limitations
+## 10. Limitations
 
 - **Needs a persistent filesystem** — FAISS indexes and SQLite live on local disk, so serverless platforms (Vercel/Netlify functions) and ephemeral containers lose data on redeploy.
 - **Abstract-only grounding for searched papers** — "Talk about it" uses title/authors/abstract, not full text (paywalled PDFs aren't fetched).
 - **Single-user concurrency** — SQLite and per-request FAISS loading are fine for personal/small-team use, not high traffic.
 - **No authentication** — anyone with the URL can use the deployment (and burn its server-side key, if set).
 - **Embedding model changes orphan old indexes** — previous PDFs re-index on first query under a new tag.
-
-## 14. Future improvements
-
-- Docker Compose with volume mounts for portable persistent deployments
-- Full-text PDF download + indexing for open-access search results
-- Streaming responses (SSE) for chat
-- User accounts with server-side key vaulting
-- Citation-aware answers linking claims back to specific PDF pages
 
 ---
 
